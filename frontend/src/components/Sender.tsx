@@ -42,6 +42,9 @@ function Sender() {
       }
 
     }
+
+    const stream = await navigator.mediaDevices.getUserMedia({video: true, audio: false});
+    pc.addTrack(stream.getVideoTracks()[0]);
   }
 
   return (

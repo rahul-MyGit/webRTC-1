@@ -1,6 +1,8 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 
 function Receiver() {
+
+  const videoRef = useRef<HTMLVideoElement>(null)
 
   useEffect(()=>{
     const socket = new WebSocket('ws://localhost:8080');
@@ -16,8 +18,6 @@ function Receiver() {
         //create ans:
         pc = new RTCPeerConnection();
         pc.setRemoteDescription(message.sdp);
-        const answer = await pc.createAnswer();
-        await pc.setLocalDescription(answer);
 
         //ice candidates:
         pc.onicecandidate = (e)=>{
@@ -27,7 +27,19 @@ function Receiver() {
           }
         }
 
+        //adding onTrack:
+        pc.ontrack = (e) => {
+          console.log(e);
+          if(videoRef.current){
+            videoRef.current.srcObject = new MediaStream([e.track]);
+            videoRef.current.play();
+          }
+        }
+
+        const answer = await pc.createAnswer();
+        await pc.setLocalDescription(answer);
         socket.send(JSON.stringify({type: 'createAnswer', sdp: pc.localDescription}))
+
       } else if (message.type === 'iceCandidate') {
         pc?.addIceCandidate(message.candidate);
       }
@@ -37,6 +49,7 @@ function Receiver() {
   return (
     <div>
       Receiver
+      <video ref={videoRef} autoPlay muted></video>
     </div>
   )
 }

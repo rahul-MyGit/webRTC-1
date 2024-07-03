@@ -10,23 +10,37 @@ function Sender() {
       socket.send(JSON.stringify({type: 'sender'}));
     }
     setSocket(socket);
-  },[])
+  },[]);
 
   const startSendingVideo = async () => {
     if (!socket) return;
 
     const pc = new RTCPeerConnection();
-    const offer = await pc.createOffer();  //gives sdp
-    await pc.setLocalDescription(offer);
-
+    pc.onnegotiationneeded = async () => {
+      console.log("onnegotiationneeded");
+      const offer = await pc.createOffer();  //gives sdp
+      await pc.setLocalDescription(offer);
     socket?.send(JSON.stringify({type: 'createOffer', sdp: pc.localDescription}));
+    }
+    
+
+    pc.onicecandidate = (e)=>{
+      console.log(e);
+      if(e.candidate) {
+        socket?.send(JSON.stringify({type: 'iceCandidate', candidate: e.candidate}));
+      }
+    }
+
 
     socket.onmessage = (event) => {
       const data = JSON.parse(event.data);
 
       if (data.type === 'createAnswer'){
         pc.setRemoteDescription(data.sdp);
+      } else if(data.type === "iceCandidate"){    //trickle ice : as ice candidates are slowly trickling it
+        pc.addIceCandidate(data.candidate);
       }
+
     }
   }
 
